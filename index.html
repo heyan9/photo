@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>何岩摄影评级网站</title>
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --text-color: #e0e0e0;
+            --border-color: #404040;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+        }
+
+        /* 顶部Logo样式 */
+         .header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .logo-img {
+            max-width: 100%;
+            height: auto;
+            max-height: 80px; /* 根据你的图片高度调整 */
+        }
+
+        /* 网站介绍 */
+        .intro {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            line-height: 1.6;
+            text-align: center;
+            color: #888;
+        }
+
+        /* 评级区域 */
+        .rating-section {
+            margin: 3rem auto;
+            max-width: 1200px;
+            padding: 0 1rem;
+        }
+
+        .rating-title {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            padding-left: 0.5rem;
+            border-left: 4px solid var(--border-color);
+        }
+
+        /* 缩略图网格布局 */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .thumbnail {
+            width: 100%;
+            height: 200px;
+            border-radius: 12px;
+            object-fit: cover;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            border: 2px solid var(--border-color);
+        }
+
+        .thumbnail:hover {
+            transform: scale(1.03);
+        }
+
+        /* 大图模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 16px;
+            border: 2px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+   <header class="header">
+        <img src="logo.png" alt="网站Logo" class="logo-img">
+    </header>
+
+    <section class="intro">
+        <p>摄影评级分为5个维度 动作适配度 主体完整性 照片的故事性 取景场地效果 照片后期  S级:5项完成  A端:3-4项完成  B阶:2-3项完成</p>
+    </section>
+
+    <!-- S级照片 -->
+    <section class="rating-section">
+        <h2 class="rating-title">S级作品</h2>
+        <p>镜头感 画面纯净度 画面表现力顶级</p> </br>
+        <div class="gallery-grid" id="s-grade"></div>
+    </section>
+
+    <!-- A级照片 -->
+    <section class="rating-section">
+        <h2 class="rating-title">A级作品</h2>
+        <p>故事感强/画面纯净度强 画面表现力不俗</p> </br>
+        <div class="gallery-grid" id="a-grade"></div>
+    </section>
+
+    <!-- B级照片 -->
+    <section class="rating-section">
+        <h2 class="rating-title">B级作品</h2>
+        <p>随手拍 画面表现力弱 只讲了故事没把故事讲好</p> </br>
+        <div class="gallery-grid" id="b-grade"></div>
+    </section>
+
+    <!-- 大图模态框 -->
+    <div class="modal" id="modal">
+        <img class="modal-img" id="modalImage">
+    </div>
+
+    <script>
+        // 示例图片数据（需要替换为实际图片路径）
+        const photos = {
+            s: ['s1.jpg', 's2.jpg', 's3.jpg'],
+            a: ['a1.jpg', 'a2.jpg'],
+            b: ['b1.jpg', 'b2.jpg', 'b3.jpg']
+        };
+
+        // 初始化画廊
+        function initGallery() {
+            Object.keys(photos).forEach(grade => {
+                const container = document.getElementById(`${grade}-grade`);
+                photos[grade].forEach(img => {
+                    const thumb = document.createElement('img');
+                    thumb.className = 'thumbnail';
+                    thumb.src = `full/${img}`; // 缩略图路径
+                    thumb.dataset.full = `full/${img}`; // 原图路径
+                    thumb.onclick = showModal;
+                    container.appendChild(thumb);
+                });
+            });
+        }
+
+        // 显示大图模态框
+        function showModal(e) {
+            const modal = document.getElementById('modal');
+            const modalImg = document.getElementById('modalImage');
+            modalImg.src = e.target.dataset.full;
+            modal.classList.add('active');
+            
+            // 点击关闭
+            modal.onclick = () => modal.classList.remove('active');
+            // ESC键关闭
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') modal.classList.remove('active');
+            });
+        }
+
+        // 初始化
+        window.onload = initGallery;
+    </script>
+</body>
+</html>
