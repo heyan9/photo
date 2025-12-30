@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HeYan Photography | GitHub 自动同步版</title>
+    <title>HeYan Photography | 摄影集</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.js"></script>
@@ -18,11 +18,10 @@
         @media (min-width: 768px) { .masonry { column-count: 3; } }
         @media (min-width: 1024px) { .masonry { column-count: 4; } }
         .m-item { break-inside: avoid; margin-bottom: 12px; cursor: pointer; }
-        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
-        .dark .glass { background: rgba(15, 15, 15, 0.8); border-bottom: 1px solid #333; }
+        .glass { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        .dark .glass { background: rgba(15, 15, 15, 0.85); border-bottom: 1px solid #333; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        /* Viewer.js 样式微调 */
-        .viewer-download { color: #fff; font-family: FontAwesome; font-size: 18px; line-height: 40px; text-align: center; }
+        .active-main { background-color: #0084FF !important; color: white !important; border-color: #0084FF !important; }
     </style>
 </head>
 <body class="bg-white dark:bg-zinc-950 transition-colors duration-500">
@@ -30,117 +29,110 @@
     <nav class="fixed top-0 w-full z-50 glass border-b border-gray-100">
         <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
             <img id="logo" src="heyanphotohei.png" alt="Logo" class="h-8">
-            <div id="tag-bar" class="hidden md:flex space-x-2 overflow-x-auto no-scrollbar">
-                <span class="text-gray-400 text-sm">正在同步仓库数据...</span>
+            
+            <div class="hidden md:flex items-center space-x-1">
+                <button onclick="switchMainTab('img1', this)" class="main-tab px-4 py-2 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition active-main">出游</button>
+                <button onclick="switchMainTab('img6', this)" class="main-tab px-4 py-2 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition">AIGC</button>
+                <button onclick="switchMainTab('img5', this)" class="main-tab px-4 py-2 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition">主题</button>
+                <a href="https://500px.com.cn/heyanw" target="_blank" class="px-4 py-2 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition">视觉中国 ↗</a>
             </div>
+
             <button onclick="toggleTheme()" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800">
                 <span id="theme-icon">🌙</span>
             </button>
         </div>
-        <div id="tag-bar-mobile" class="md:hidden flex overflow-x-auto px-4 py-2 space-x-2 no-scrollbar border-t border-gray-50 dark:border-zinc-800"></div>
+
+        <div id="sub-tag-bar" class="flex overflow-x-auto px-4 py-2 space-x-2 no-scrollbar border-t border-gray-50 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/50">
+            </div>
     </nav>
 
-    <main class="pt-28 pb-12 px-4 max-w-7xl mx-auto">
+    <main class="pt-36 pb-12 px-4 max-w-7xl mx-auto">
         <div id="gallery" class="masonry"></div>
-        <div id="loading" class="flex justify-center py-20">
+        <div id="loading" class="flex justify-center py-20 hidden">
             <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-zhihu"></div>
         </div>
     </main>
 
     <script>
-        // ======= 配置区域 =======
-        const GITHUB_USER = 'heyan9'; // 替换为你的 GitHub 用户名
-        const GITHUB_REPO = 'photo'; // 替换为你的仓库名
-        const BASE_PATH = 'img1';        // 你的图片根目录
-        // =======================
-
+        const GITHUB_USER = 'heyan9';
+        const GITHUB_REPO = 'heyan9.github.io'; // 假设你的图片放在这个仓库
+        
         const galleryEl = document.getElementById('gallery');
-        const tagBar = document.getElementById('tag-bar');
-        const tagBarMobile = document.getElementById('tag-bar-mobile');
+        const subTagBar = document.getElementById('sub-tag-bar');
+        const loading = document.getElementById('loading');
         let viewer = null;
 
-        // 1. 获取 GitHub 目录结构
-        async function fetchRepoData() {
+        // 切换大库
+        async function switchMainTab(type, btn) {
+            // 更新按钮样式
+            document.querySelectorAll('.main-tab').forEach(b => b.classList.remove('active-main'));
+            if(btn) btn.classList.add('active-main');
+
+            if (type === 'img1') {
+                subTagBar.style.display = 'flex';
+                fetchSubFolders('img1');
+            } else {
+                subTagBar.style.display = 'none';
+                loadDirectImages(type); // 直接加载 img5 或 img6
+            }
+        }
+
+        // 逻辑1：抓取 img1 及其子文件夹
+        async function fetchSubFolders(basePath) {
+            loading.classList.remove('hidden');
             try {
-                const response = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${BASE_PATH}`);
-                const data = await response.json();
-                
-                // 过滤出文件夹
+                const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${basePath}`);
+                const data = await res.json();
                 const folders = data.filter(item => item.type === 'dir');
-                renderTags(folders);
                 
-                if (folders.length > 0) {
-                    loadFolderImages(folders[0].name); // 默认加载第一个文件夹
-                }
-                document.getElementById('loading').remove();
-            } catch (err) {
-                console.error("数据抓取失败:", err);
-                tagBar.innerHTML = `<span class="text-red-500 text-sm">API 调用超限或仓库配置错误</span>`;
-            }
+                subTagBar.innerHTML = '';
+                folders.forEach((f, idx) => {
+                    const t = document.createElement('button');
+                    t.className = "px-3 py-1 text-xs rounded-full border border-zhihu text-zhihu hover:bg-zhihu hover:text-white transition whitespace-nowrap";
+                    t.innerText = f.name;
+                    t.onclick = () => loadDirectImages(`${basePath}/${f.name}`);
+                    subTagBar.appendChild(t);
+                    if(idx === 0) loadDirectImages(`${basePath}/${f.name}`);
+                });
+            } catch (e) { console.error(e); }
+            loading.classList.add('hidden');
         }
 
-        // 2. 渲染分类标签
-        function renderTags(folders) {
-            tagBar.innerHTML = '';
-            tagBarMobile.innerHTML = '';
-            folders.forEach(folder => {
-                const btn = document.createElement('button');
-                btn.className = "px-4 py-1 rounded-full text-sm border border-zhihu text-zhihu hover:bg-zhihu hover:text-white transition whitespace-nowrap";
-                btn.innerText = folder.name;
-                btn.onclick = () => loadFolderImages(folder.name);
-                
-                tagBar.appendChild(btn.cloneNode(true));
-                tagBarMobile.appendChild(btn);
-            });
-        }
-
-        // 3. 抓取具体文件夹内的图片
-        async function loadFolderImages(folderName) {
-            galleryEl.innerHTML = '<div class="col-span-full text-center py-10 text-gray-400">正在加载图片...</div>';
-            try {
-                const response = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${BASE_PATH}/${folderName}`);
-                const files = await response.json();
-                
-                const images = files.filter(f => /\.(jpe?g|png|gif|webp)$/i.test(f.name));
-                renderGallery(images);
-            } catch (err) {
-                galleryEl.innerHTML = '加载失败';
-            }
-        }
-
-        // 4. 渲染瀑布流并绑定查看器
-        function renderGallery(images) {
+        // 逻辑2：直接加载文件夹下所有图片
+        async function loadDirectImages(path) {
+            loading.classList.remove('hidden');
             galleryEl.innerHTML = '';
-            images.forEach(img => {
-                const div = document.createElement('div');
-                div.className = 'm-item group overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-900';
-                // 使用 jsDelivr CDN 加速图片显示
-                const rawUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_USER}/${GITHUB_REPO}/${img.path}`;
+            try {
+                const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${path}`);
+                const files = await res.json();
+                const images = files.filter(f => /\.(jpe?g|png|gif|webp)$/i.test(f.name));
                 
-                div.innerHTML = `
-                    <img src="${rawUrl}" data-original="${rawUrl}" class="w-full h-auto block transition duration-500 group-hover:scale-105" loading="lazy">
-                `;
-                galleryEl.appendChild(div);
-            });
+                images.forEach(img => {
+                    const div = document.createElement('div');
+                    div.className = 'm-item group overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-900';
+                    const rawUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_USER}/${GITHUB_REPO}/${img.path}`;
+                    div.innerHTML = `<img src="${rawUrl}" data-original="${rawUrl}" class="w-full h-auto block transform group-hover:scale-105 transition duration-500" loading="lazy">`;
+                    galleryEl.appendChild(div);
+                });
 
-            // 初始化或更新图片查看器
-            if (viewer) viewer.destroy();
-            viewer = new Viewer(galleryEl, {
-                url: 'data-original',
-                toolbar: {
-                    zoomIn: 4, zoomOut: 4, oneToOne: 4, reset: 4,
-                    prev: 4, play: { show: 4, size: 'large' }, next: 4,
-                    rotateLeft: 4, rotateRight: 4, flipHorizontal: 4, flipVertical: 4,
-                    download: function() {
-                        const a = document.createElement('a');
-                        a.href = viewer.image.src;
-                        a.download = viewer.image.alt;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
+                if (viewer) viewer.destroy();
+                viewer = new Viewer(galleryEl, {
+                    url: 'data-original',
+                    navbar: true,
+                    title: false,
+                    toolbar: {
+                        zoomIn: 1, zoomOut: 1, prev: 1, next: 1,
+                        rotateLeft: 1, rotateRight: 1,
+                        download: function() {
+                            const a = document.createElement('a');
+                            a.href = viewer.image.src;
+                            a.download = viewer.image.alt || 'photo';
+                            a.click();
+                        },
                     },
-                },
-            });
+                });
+            } catch (e) { console.error(e); }
+            loading.classList.add('hidden');
         }
 
         function toggleTheme() {
@@ -149,7 +141,8 @@
             document.getElementById('theme-icon').innerText = isDark ? '☀️' : '🌙';
         }
 
-        fetchRepoData();
+        // 初始化加载 img1
+        switchMainTab('img1', document.querySelector('.main-tab'));
     </script>
 </body>
 </html>
