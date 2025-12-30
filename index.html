@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HeYan Photography | 摄影集</title>
+    <title>HeYan Photography</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.js"></script>
@@ -21,7 +21,9 @@
         .glass { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
         .dark .glass { background: rgba(15, 15, 15, 0.85); border-bottom: 1px solid #333; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .active-main { background-color: #0084FF !important; color: white !important; border-color: #0084FF !important; }
+        .active-main { background-color: #0084FF !important; color: white !important; }
+        /* 子标签选中样式 */
+        .active-sub { background-color: #0084FF !important; color: white !important; border-color: #0084FF !important; }
     </style>
 </head>
 <body class="bg-white dark:bg-zinc-950 transition-colors duration-500">
@@ -30,11 +32,11 @@
         <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
             <img id="logo" src="heyanphotohei.png" alt="Logo" class="h-8">
             
-            <div class="hidden md:flex items-center space-x-1">
-                <button onclick="switchMainTab('img1', this)" class="main-tab px-4 py-2 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition active-main">出游</button>
-                <button onclick="switchMainTab('img6', this)" class="main-tab px-4 py-2 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition">AIGC</button>
-                <button onclick="switchMainTab('img5', this)" class="main-tab px-4 py-2 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition">主题</button>
-                <a href="https://500px.com.cn/heyanw" target="_blank" class="px-4 py-2 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition">视觉中国 ↗</a>
+            <div class="flex items-center space-x-1">
+                <button onclick="loadTab('travel')" id="btn-travel" class="main-tab px-3 py-2 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition">出游</button>
+                <button onclick="loadTab('aigc')" id="btn-aigc" class="main-tab px-3 py-2 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition">AIGC</button>
+                <button onclick="loadTab('theme')" id="btn-theme" class="main-tab px-3 py-2 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition">主题</button>
+                <a href="https://500px.com.cn/heyanw" target="_blank" class="px-3 py-2 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition whitespace-nowrap">视觉中国 ↗</a>
             </div>
 
             <button onclick="toggleTheme()" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800">
@@ -42,11 +44,13 @@
             </button>
         </div>
 
-        <div id="sub-tag-bar" class="flex overflow-x-auto px-4 py-2 space-x-2 no-scrollbar border-t border-gray-50 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/50">
-            </div>
+        <div id="sub-tag-bar-container" class="border-t border-gray-50 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/50 hidden">
+            <div id="sub-tag-bar" class="flex justify-center items-center overflow-x-auto px-4 py-2 space-x-2 no-scrollbar">
+                </div>
+        </div>
     </nav>
 
-    <main class="pt-36 pb-12 px-4 max-w-7xl mx-auto">
+    <main class="pt-32 pb-12 px-4 max-w-7xl mx-auto">
         <div id="gallery" class="masonry"></div>
         <div id="loading" class="flex justify-center py-20 hidden">
             <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-zhihu"></div>
@@ -54,63 +58,73 @@
     </main>
 
     <script>
-        const GITHUB_USER = 'heyan9';
-        const GITHUB_REPO = 'heyan9.github.io'; // 假设你的图片放在这个仓库
+        const USER = 'heyan9';
+        const REPO_PHOTO = 'photo';           
+        const REPO_BLOG = 'heyan9.github.io'; 
         
         const galleryEl = document.getElementById('gallery');
         const subTagBar = document.getElementById('sub-tag-bar');
+        const subTagContainer = document.getElementById('sub-tag-bar-container');
         const loading = document.getElementById('loading');
         let viewer = null;
 
-        // 切换大库
-        async function switchMainTab(type, btn) {
-            // 更新按钮样式
+        function loadTab(type) {
             document.querySelectorAll('.main-tab').forEach(b => b.classList.remove('active-main'));
-            if(btn) btn.classList.add('active-main');
+            document.getElementById(`btn-${type}`).classList.add('active-main');
+            galleryEl.innerHTML = '';
+            subTagContainer.classList.add('hidden');
 
-            if (type === 'img1') {
-                subTagBar.style.display = 'flex';
-                fetchSubFolders('img1');
-            } else {
-                subTagBar.style.display = 'none';
-                loadDirectImages(type); // 直接加载 img5 或 img6
+            if (type === 'travel') {
+                fetchTravelFolders();
+            } else if (type === 'aigc') {
+                fetchDirectImages(REPO_BLOG, 'img6');
+            } else if (type === 'theme') {
+                fetchDirectImages(REPO_BLOG, 'img5');
             }
         }
 
-        // 逻辑1：抓取 img1 及其子文件夹
-        async function fetchSubFolders(basePath) {
+        async function fetchTravelFolders() {
             loading.classList.remove('hidden');
             try {
-                const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${basePath}`);
+                const res = await fetch(`https://api.github.com/repos/${USER}/${REPO_PHOTO}/contents/img1`);
                 const data = await res.json();
                 const folders = data.filter(item => item.type === 'dir');
                 
                 subTagBar.innerHTML = '';
+                subTagContainer.classList.remove('hidden');
+                
                 folders.forEach((f, idx) => {
-                    const t = document.createElement('button');
-                    t.className = "px-3 py-1 text-xs rounded-full border border-zhihu text-zhihu hover:bg-zhihu hover:text-white transition whitespace-nowrap";
-                    t.innerText = f.name;
-                    t.onclick = () => loadDirectImages(`${basePath}/${f.name}`);
-                    subTagBar.appendChild(t);
-                    if(idx === 0) loadDirectImages(`${basePath}/${f.name}`);
+                    const btn = document.createElement('button');
+                    btn.className = "sub-btn px-4 py-1 text-xs rounded-full border border-zhihu text-zhihu hover:bg-zhihu hover:text-white transition whitespace-nowrap";
+                    btn.innerText = f.name;
+                    btn.onclick = (e) => {
+                        document.querySelectorAll('.sub-btn').forEach(sb => sb.classList.remove('active-sub'));
+                        btn.classList.add('active-sub');
+                        fetchDirectImages(REPO_PHOTO, `img1/${f.name}`);
+                    };
+                    subTagBar.appendChild(btn);
+                    if(idx === 0) {
+                        btn.classList.add('active-sub');
+                        fetchDirectImages(REPO_PHOTO, `img1/${f.name}`);
+                    }
                 });
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("API失败", e); }
             loading.classList.add('hidden');
         }
 
-        // 逻辑2：直接加载文件夹下所有图片
-        async function loadDirectImages(path) {
+        async function fetchDirectImages(repo, path) {
             loading.classList.remove('hidden');
             galleryEl.innerHTML = '';
             try {
-                const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${path}`);
+                const res = await fetch(`https://api.github.com/repos/${USER}/${repo}/contents/${path}`);
                 const files = await res.json();
                 const images = files.filter(f => /\.(jpe?g|png|gif|webp)$/i.test(f.name));
                 
                 images.forEach(img => {
                     const div = document.createElement('div');
                     div.className = 'm-item group overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-900';
-                    const rawUrl = `https://cdn.jsdelivr.net/gh/${GITHUB_USER}/${GITHUB_REPO}/${img.path}`;
+                    const rawUrl = `https://raw.githubusercontent.com/${USER}/${repo}/master/${img.path}`;
+                    
                     div.innerHTML = `<img src="${rawUrl}" data-original="${rawUrl}" class="w-full h-auto block transform group-hover:scale-105 transition duration-500" loading="lazy">`;
                     galleryEl.appendChild(div);
                 });
@@ -118,20 +132,17 @@
                 if (viewer) viewer.destroy();
                 viewer = new Viewer(galleryEl, {
                     url: 'data-original',
-                    navbar: true,
-                    title: false,
                     toolbar: {
                         zoomIn: 1, zoomOut: 1, prev: 1, next: 1,
-                        rotateLeft: 1, rotateRight: 1,
                         download: function() {
                             const a = document.createElement('a');
                             a.href = viewer.image.src;
-                            a.download = viewer.image.alt || 'photo';
+                            a.download = viewer.image.alt || 'heyan-photo';
                             a.click();
                         },
                     },
                 });
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("加载图片失败", e); }
             loading.classList.add('hidden');
         }
 
@@ -141,8 +152,7 @@
             document.getElementById('theme-icon').innerText = isDark ? '☀️' : '🌙';
         }
 
-        // 初始化加载 img1
-        switchMainTab('img1', document.querySelector('.main-tab'));
+        loadTab('travel');
     </script>
 </body>
 </html>
